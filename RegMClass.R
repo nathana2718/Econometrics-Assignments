@@ -50,10 +50,11 @@ regMClass = R6Class(
     dist= NULL,
     a2 =NULL,
     
-    b1list = vector(mode="numeric",length=0),
-    inInterval=vector(mode="logical",length=0),#declare vectors so that append method works
+    
     initialize = function(ns = 20, n=1000, b1=1, b2=1, b3=0, a1=1, a2=1, a3=0, sigma=1,dist="norm")
     { 
+      b1list = vector(mode="numeric",length=0)
+      inInterval=vector(mode="logical",length=0)#declare vectors so that append method works
       for(j in 1:n)
       {
         #__init__
