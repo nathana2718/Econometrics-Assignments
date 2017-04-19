@@ -5,16 +5,18 @@ date: "April 18, 2017"
 output: pdf_document
 ---
 
-```{r setup, include=FALSE}
+```{r setup, include=TRUE}
 knitr::opts_chunk$set(echo = TRUE)
 set.seed(42)
 library(R6) #using R6 oop system
+library(stargazer)
 ```
 
 ##Q1
 Define two classes that generates results:
 ```{r}
 #Class that generates all combinations in a vector
+library(R6) #using R6 oop system
 regMCloop = R6Class(
   public = list(
     nrange=NULL,
@@ -32,29 +34,32 @@ regMCloop = R6Class(
       self$results = vector("list",length(nrange)*length(sigmarange)*length(Urange)*length(a2range))
     },
     
-    loop = function()
+    loop = function(a1=1, a3=1, b1=1, b2=1, b3=0)
     {
-      i=1
-        for(n in self$nrange)
+      i=1#elements of result vector
+      for(n in self$nrange)
+      {
+        for(sigma in self$sigmarange)
         {
-          for(sigma in self$sigmarange)
+          for(dist in self$Urange)
           {
-            for(dist in self$Urange)
+            for(a2 in self$a2range)
             {
-              for(a2 in self$a2range)
-              {
-                self$results[[i]] = regMClass$new(ns=n,sigma=sigma,dist=dist)
-                i=i+1
-              }
+              self$results[[i]] = regMClass$new(ns=n,sigma=sigma,dist=dist, a2=a2, a3=1, b1=1, b2=1, b3=0, a1=1)
+              i=i+1#next result
             }
           }
         }
       }
-    
+    }
+   
     
   )
 )
-#Class that simulates under defined conditions
+
+```
+
+```{r}
 regMClass = R6Class(
   public = list(
     bias = NULL,
@@ -66,11 +71,11 @@ regMClass = R6Class(
     dist= NULL,
     a2 =NULL,
     
-    b1list = vector(mode="numeric",length=0),
-    inInterval=vector(mode="logical",length=0),#declare vectors so that append method works
-    initialize = function(ns = 20, n=1000, b1=1, b2=1, b3=0, a1=1, a2=1, a3=0, sigma=1,dist="norm",b1list,inInterval)
-    { b1list = vector(mode="numeric",length=0)
-      inInterval=vector(mode="logical",length=0)
+    
+    initialize = function(ns = 20, n=1000, b1=1, b2=1, b3=0, a1=1, a2=0, a3=1, sigma=1,dist="norm")
+    { 
+      b1list = vector(mode="numeric",length=0)
+      inInterval=vector(mode="logical",length=0)#declare vectors so that append method works
       for(j in 1:n)
       {
         #__init__
@@ -98,7 +103,7 @@ regMClass = R6Class(
         inInterval = append(inInterval,b1<interval[2]&b1>interval[1])
         intervalrange = interval[2]-interval[1]
       }
-      self$ns = ns
+      self$ns = ns # so we can sort by values used
       self$sigma = sigma
       self$dist = dist
       self$a2 = a2
@@ -109,25 +114,42 @@ regMClass = R6Class(
     }
   )
 )
-
 ```
+
 
 We use a nested loop to generate all combinations needed and store them in a vector of results. These results are then stored within an object. It is possible that a recursive function approach could have been more elegant but for the number of combinations here, nested loop should suffice.
 
 ```{R}
-data = regMCloop$new(nrange=c(20,200,2000),sigmarange=c(1,2),Urange=c("norm","lognorm"))
-data$loop()
+dataQ1 = regMCloop$new(nrange=c(20,200,2000),sigmarange=c(1,2),Urange=c("norm","lognorm"))
+dataQ1$loop()
 ```
 Here we create an instance of the class and use the loop methods to generate the results. This does take some time(~20s) as we are looping over quite a large number of iterations.
+```{r results='asis'}
+    Bias = vector(length=12)
+    SD = vector(length=12)
+    CovRate = vector(length=12)
+    CovLength = vector(length=12)
+    for(i in 1:12){
+    Bias[i] = (dataQ1$results[[i]]$bias)
+    SD[i] =   (dataQ1$results[[i]]$sd)
+    CovRate[i] = (dataQ1$results[[i]]$CovRate)
+    CovLength[i]=(dataQ1$results[[i]]$CovLength)
+    }
+    ndf=c(rep(20,4),rep(200,4),rep(2000,4))
+    sigma  = c(rep(1,2),rep(2,2),rep(1,2),rep(2,2),rep(1,2),rep(2,2))
+    Distribution = rep(c("Normal","LogNormal"),6)
+    Q1=data.frame(ndf,sigma,Distribution,Bias,SD,CovRate,CovLength)
+    stargazer(Q1,header=FALSE,type="latex",summary=FALSE)
+```
 
 #a)
-In all combinations, $|\textrm{bias}|$ is unanimously within $\pm$ $0.005$ of 0. Considering that even under all combinations in which the number of samples is 20 that this is present, these results strongly indicate that the estimator is or very close to unbiased. It is impossible to say definitively due to the stochastic nature of the simulation, however the weak law of large numbers and central limit theorem point to this conclusion. This seems appropriate considering the theoretical aspects of the estimator. (more explanation needed here?)
+In all combinations, $|\textrm{bias}|$ is unanimously within $\pm$ $0.05$ of 0. Considering that even under all combinations in which the number of samples is 20 that this is present, these results strongly indicate that the estimator is or very close to unbiased. It is impossible to say definitively due to the stochastic nature of the simulation, however the weak law of large numbers and central limit theorem point to this conclusion. This seems appropriate considering the theoretical aspects of the estimator. (more explanation needed here?)
 
 #b)
 For each combination, of $\sigma$ and distribution, we vary the number of samples and observe the results. In nearly all cases, bias decreases monotonically throughout.  In the few cases where it does not, bias is very close to zero and is still within the same order of magnitude of the previous estimate. This is to be expected even with a consistent estimator as the estimator becomes closer and closer to the true value of the variable. Perhaps with a higher number of simulations, this error would be reduced. Further, testing across a larger number of sample sizes may have graphically indicated the monotonicity of the bias as sample size increased. With only three data points, there could be any number of small changes in between. 
 
 #c)
-Coverage rate is consistently within 0.1 of the expected $95\%$ coverage. Coverage rates between normal and log normal distributions appear to be inconclusive. Similarly, $\sigma$ appears to have limited effect on coverage rate.  The number of samples also inconclusive. One could of course perform an anova test to show these and reveal possible interaction effects.
+Coverage rate is consistently within 0.15 of the expected $95\%$ coverage. Coverage rates between normal and log normal distributions appear to be inconclusive. Similarly, $\sigma$ appears to have limited effect on coverage rate.  The number of samples also inconclusive. One could of course perform an anova test to show these and reveal possible interaction effects.
 
 #d)
 For all combinations, log normal generates much large confidence intervals than its normal counterpart.
@@ -143,7 +165,29 @@ One can verify that for all values the variance will be greater for the log norm
 This can be verified again as for unitary $\sigma$, the coverage rate is far smaller than their $\sigma=2$ counterparts. 
 
 Sample size reduces interval length drastically for all combinations. 
+2a)
 
-2)
+2b)
+```{r}
+dataQ2b = regMCloop$new(nrange=c(20,200,2000),sigmarange=c(1,2),Urange=c("norm","lognorm"))
+dataQ2b$loop(b3=1,a3=0)
+```
 
+```{r results='asis'}
+  Bias = vector(length=12)
+    SD = vector(length=12)
+    CovRate = vector(length=12)
+    CovLength = vector(length=12)
+    for(i in 1:12){
+    Bias[i] = (dataQ2b$results[[i]]$bias)
+    SD[i] =   (dataQ2b$results[[i]]$sd)
+    CovRate[i] = (dataQ2b$results[[i]]$CovRate)
+    CovLength[i]=(dataQ2b$results[[i]]$CovLength)
+    }
+    ndf=c(rep(20,4),rep(200,4),rep(2000,4))
+    sigma  = c(rep(1,2),rep(2,2),rep(1,2),rep(2,2),rep(1,2),rep(2,2))
+    Distribution = rep(c("Normal","LogNormal"),6)
+    Q1=data.frame(ndf,sigma,Distribution,Bias,SD,CovRate,CovLength)
+    stargazer(Q1,header=FALSE,type="latex",summary=FALSE)
+```
 X1 is now collinear with one of the other explanatory variables. 
