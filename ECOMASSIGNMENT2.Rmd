@@ -191,6 +191,11 @@ Bias = vector(length=12)
 It is clear that omitted variable bias is present here with an apparent consistent bias of ~0.33. 'work out theoretical bias here'. Standard deviation is also uniformly higher compared to a) and as such confidence intervals are larger. Coverage rate is especially poor here indicating a severe deviation from the requirements and assumptions of linear regression. 
 
 Whilst $X_3$ determines $X_1$ in both 1) and 2a), it does not determine $Y$ in 1). As such, it does not fulfill  the requirements for an omitted variable bias as endogeniety does not occur:  
+1) The omitted variable must be a determinant of the dependant variable(ie. regression coefficient is non-zero)
+2) Omitted variable is correlated with the explanatory variable. 
+
+Whilst condition 2) is present through both questions, condition 1 only holds for question 2a).
+
 
 2b)
 ```{r}
@@ -215,4 +220,5 @@ dataQ2b$loop(b3=1,a3=0)
     Q2b=data.frame(ndf,sigma,Distribution,Bias,SD,CovRate,CovLength)
     stargazer(Q2b,header=FALSE,type="latex",summary=FALSE)
 ```
-X1 is now collinear with one of the other explanatory variables. 
+As expected bias disappears as condition 1 is removed. The another anomalies can be explained as follows:
+
