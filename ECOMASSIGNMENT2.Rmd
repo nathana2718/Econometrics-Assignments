@@ -1,0 +1,149 @@
+---
+title: "ECOMAss2"
+author: "NathanAung"
+date: "April 18, 2017"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+set.seed(42)
+library(R6) #using R6 oop system
+```
+
+##Q1
+Define two classes that generates results:
+```{r}
+#Class that generates all combinations in a vector
+regMCloop = R6Class(
+  public = list(
+    nrange=NULL,
+    sigmarange=NULL,
+    Urange=NULL,
+    a2range=NULL,
+    results = NULL,
+    
+    initialize = function(nrange,sigmarange,Urange,a2range=0)
+    {
+      self$nrange = nrange
+      self$sigmarange = sigmarange
+      self$Urange = Urange
+      self$a2range = a2range
+      self$results = vector("list",length(nrange)*length(sigmarange)*length(Urange)*length(a2range))
+    },
+    
+    loop = function()
+    {
+      i=1
+        for(n in self$nrange)
+        {
+          for(sigma in self$sigmarange)
+          {
+            for(dist in self$Urange)
+            {
+              for(a2 in self$a2range)
+              {
+                self$results[[i]] = regMClass$new(ns=n,sigma=sigma,dist=dist)
+                i=i+1
+              }
+            }
+          }
+        }
+      }
+    
+    
+  )
+)
+#Class that simulates under defined conditions
+regMClass = R6Class(
+  public = list(
+    bias = NULL,
+    sd = NULL,
+    CovRate=NULL,
+    CovLength=NULL,
+    ns = NULL,
+    sigma= NULL,
+    dist= NULL,
+    a2 =NULL,
+    
+    b1list = vector(mode="numeric",length=0),
+    inInterval=vector(mode="logical",length=0),#declare vectors so that append method works
+    initialize = function(ns = 20, n=1000, b1=1, b2=1, b3=0, a1=1, a2=1, a3=0, sigma=1,dist="norm",b1list,inInterval)
+    { b1list = vector(mode="numeric",length=0)
+      inInterval=vector(mode="logical",length=0)
+      for(j in 1:n)
+      {
+        #__init__
+        Z1 = rnorm(n=ns,mean=0,sd=1)
+        X2 = rnorm(n=ns,mean=0,sd=1)
+        X3 = rnorm(n=ns,mean=0,sd=1)
+        V = rnorm(n=ns,mean=0,sd=1)
+        
+        if (dist == "norm")
+        {
+          U = rnorm(n=ns,mean=0,sd=1) 
+        }
+        else
+        {
+          U = rlnorm(n=ns,mean=0,sd=1)
+        }
+        #Generate X1 and Y
+        X1 = a1*Z1 + a2*X2 + a3*X3 +V
+        Y = b1*X1 + b2*X2 +b3*X3 + sigma*U
+        #Estimates
+        hat = lm(Y ~ X1+X2)
+        b1list=append(b1list,hat$coefficients["X1"])
+        #In confidence interval?
+        interval = confint(hat,parm = "X1",interval="confidence")
+        inInterval = append(inInterval,b1<interval[2]&b1>interval[1])
+        intervalrange = interval[2]-interval[1]
+      }
+      self$ns = ns
+      self$sigma = sigma
+      self$dist = dist
+      self$a2 = a2
+      self$bias = mean(b1list)-1
+      self$sd = sd(b1list)
+      self$CovRate = mean(inInterval)
+      self$CovLength = mean(intervalrange)
+    }
+  )
+)
+
+```
+
+We use a nested loop to generate all combinations needed and store them in a vector of results. These results are then stored within an object. It is possible that a recursive function approach could have been more elegant but for the number of combinations here, nested loop should suffice.
+
+```{R}
+data = regMCloop$new(nrange=c(20,200,2000),sigmarange=c(1,2),Urange=c("norm","lognorm"))
+data$loop()
+```
+Here we create an instance of the class and use the loop methods to generate the results. This does take some time(~20s) as we are looping over quite a large number of iterations.
+
+#a)
+In all combinations, $|\textrm{bias}|$ is unanimously within $\pm$ $0.005$ of 0. Considering that even under all combinations in which the number of samples is 20 that this is present, these results strongly indicate that the estimator is or very close to unbiased. It is impossible to say definitively due to the stochastic nature of the simulation, however the weak law of large numbers and central limit theorem point to this conclusion. This seems appropriate considering the theoretical aspects of the estimator. (more explanation needed here?)
+
+#b)
+For each combination, of $\sigma$ and distribution, we vary the number of samples and observe the results. In nearly all cases, bias decreases monotonically throughout.  In the few cases where it does not, bias is very close to zero and is still within the same order of magnitude of the previous estimate. This is to be expected even with a consistent estimator as the estimator becomes closer and closer to the true value of the variable. Perhaps with a higher number of simulations, this error would be reduced. Further, testing across a larger number of sample sizes may have graphically indicated the monotonicity of the bias as sample size increased. With only three data points, there could be any number of small changes in between. 
+
+#c)
+Coverage rate is consistently within 0.1 of the expected $95\%$ coverage. Coverage rates between normal and log normal distributions appear to be inconclusive. Similarly, $\sigma$ appears to have limited effect on coverage rate.  The number of samples also inconclusive. One could of course perform an anova test to show these and reveal possible interaction effects.
+
+#d)
+For all combinations, log normal generates much large confidence intervals than its normal counterpart.
+
+This can be seen by examining the variance of normal and log normal distributions. With standard deviation $\sigma$, the variance for normal and lognormal respectively is:
+
+$$ \sigma ^2 $$
+
+$$ (e^{\sigma^2} -1)(e^{2\mu+\sigma^2})$$
+
+One can verify that for all values the variance will be greater for the log normal case . Therefore the estimated standard deviation will be much larger for the distribution and thus parameter estimates will have a larger confidence interval for the same coverage rate.
+
+This can be verified again as for unitary $\sigma$, the coverage rate is far smaller than their $\sigma=2$ counterparts. 
+
+Sample size reduces interval length drastically for all combinations. 
+
+2)
+
+X1 is now collinear with one of the other explanatory variables. 
