@@ -45,14 +45,14 @@ regMCloop = R6Class(
           {
             for(a2 in self$a2range)
             {
-              self$results[[i]] = regMClass$new(ns=n,sigma=sigma,dist=dist, a2=a2, a3=1, b1=1, b2=1, b3=0, a1=1)
+              self$results[[i]] = regMClass$new(ns=n,sigma=sigma,dist=dist, a2=a2, a3=a3, b1=b1, b2=b2, b3=b3, a1=a1)
               i=i+1#next result
             }
           }
         }
       }
     }
-   
+    
     
   )
 )
@@ -74,6 +74,7 @@ regMClass = R6Class(
     
     initialize = function(ns = 20, n=1000, b1=1, b2=1, b3=0, a1=1, a2=0, a3=1, sigma=1,dist="norm")
     { 
+      intervalrange =vector(mode="numeric",length=0)
       b1list = vector(mode="numeric",length=0)
       inInterval=vector(mode="logical",length=0)#declare vectors so that append method works
       for(j in 1:n)
@@ -101,7 +102,7 @@ regMClass = R6Class(
         #In confidence interval?
         interval = confint(hat,parm = "X1",interval="confidence")
         inInterval = append(inInterval,b1<interval[2]&b1>interval[1])
-        intervalrange = interval[2]-interval[1]
+        intervalrange = append(intervalrange,interval[2]-interval[1])
       }
       self$ns = ns # so we can sort by values used
       self$sigma = sigma
@@ -124,7 +125,7 @@ dataQ1 = regMCloop$new(nrange=c(20,200,2000),sigmarange=c(1,2),Urange=c("norm","
 dataQ1$loop()
 ```
 Here we create an instance of the class and use the loop methods to generate the results. This does take some time(~20s) as we are looping over quite a large number of iterations.
-```{r results='asis'}
+```{r results='asis',echo=FALSE}
     Bias = vector(length=12)
     SD = vector(length=12)
     CovRate = vector(length=12)
@@ -143,7 +144,7 @@ Here we create an instance of the class and use the loop methods to generate the
 ```
 
 #a)
-In all combinations, $|\textrm{bias}|$ is unanimously within $\pm$ $0.05$ of 0. Considering that even under all combinations in which the number of samples is 20 that this is present, these results strongly indicate that the estimator is or very close to unbiased. It is impossible to say definitively due to the stochastic nature of the simulation, however the weak law of large numbers and central limit theorem point to this conclusion. This seems appropriate considering the theoretical aspects of the estimator. (more explanation needed here?)
+In all combinations, $|\textrm{bias}|$ is unanimously within $\pm$ $0.005$ of 0. Considering that even under all combinations in which the number of samples is 20 that this is present, these results strongly indicate that the estimator is or very close to unbiased. It is impossible to say definitively due to the stochastic nature of the simulation, however the weak law of large numbers and central limit theorem point to this conclusion. This seems appropriate considering the theoretical aspects of the estimator. (more explanation needed here?)
 
 #b)
 For each combination, of $\sigma$ and distribution, we vary the number of samples and observe the results. In nearly all cases, bias decreases monotonically throughout.  In the few cases where it does not, bias is very close to zero and is still within the same order of magnitude of the previous estimate. This is to be expected even with a consistent estimator as the estimator becomes closer and closer to the true value of the variable. Perhaps with a higher number of simulations, this error would be reduced. Further, testing across a larger number of sample sizes may have graphically indicated the monotonicity of the bias as sample size increased. With only three data points, there could be any number of small changes in between. 
@@ -166,6 +167,30 @@ This can be verified again as for unitary $\sigma$, the coverage rate is far sma
 
 Sample size reduces interval length drastically for all combinations. 
 2a)
+```{r}
+dataQ2a = regMCloop$new(nrange=c(20,200,2000),sigmarange=c(1,2),Urange=c("norm","lognorm"))
+dataQ2a$loop(b3=1,a3=1)
+```
+```{r results='asis',echo=FALSE}
+Bias = vector(length=12)
+    SD = vector(length=12)
+    CovRate = vector(length=12)
+    CovLength = vector(length=12)
+    for(i in 1:12){
+    Bias[i] = (dataQ2a$results[[i]]$bias)
+    SD[i] =   (dataQ2a$results[[i]]$sd)
+    CovRate[i] = (dataQ2a$results[[i]]$CovRate)
+    CovLength[i]=(dataQ2a$results[[i]]$CovLength)
+    }
+    ndf=c(rep(20,4),rep(200,4),rep(2000,4))
+    sigma  = c(rep(1,2),rep(2,2),rep(1,2),rep(2,2),rep(1,2),rep(2,2))
+    Distribution = rep(c("Normal","LogNormal"),6)
+    Q2a=data.frame(ndf,sigma,Distribution,Bias,SD,CovRate,CovLength)
+    stargazer(Q2a,header=FALSE,type="latex",summary=FALSE)
+```
+It is clear that omitted variable bias is present here with an apparent consistent bias of ~0.33. 'work out theoretical bias here'. Standard deviation is also uniformly higher compared to a) and as such confidence intervals are larger. Coverage rate is especially poor here indicating a severe deviation from the requirements and assumptions of linear regression. 
+
+Whilst $X_3$ determines $X_1$ in both 1) and 2a), it does not determine $Y$ in 1). As such, it does not fulfill  the requirements for an omitted variable bias as endogeniety does not occur:  
 
 2b)
 ```{r}
@@ -173,8 +198,8 @@ dataQ2b = regMCloop$new(nrange=c(20,200,2000),sigmarange=c(1,2),Urange=c("norm",
 dataQ2b$loop(b3=1,a3=0)
 ```
 
-```{r results='asis'}
-  Bias = vector(length=12)
+```{r results='asis',echo=FALSE}
+    Bias = vector(length=12)
     SD = vector(length=12)
     CovRate = vector(length=12)
     CovLength = vector(length=12)
@@ -187,7 +212,7 @@ dataQ2b$loop(b3=1,a3=0)
     ndf=c(rep(20,4),rep(200,4),rep(2000,4))
     sigma  = c(rep(1,2),rep(2,2),rep(1,2),rep(2,2),rep(1,2),rep(2,2))
     Distribution = rep(c("Normal","LogNormal"),6)
-    Q1=data.frame(ndf,sigma,Distribution,Bias,SD,CovRate,CovLength)
-    stargazer(Q1,header=FALSE,type="latex",summary=FALSE)
+    Q2b=data.frame(ndf,sigma,Distribution,Bias,SD,CovRate,CovLength)
+    stargazer(Q2b,header=FALSE,type="latex",summary=FALSE)
 ```
 X1 is now collinear with one of the other explanatory variables. 

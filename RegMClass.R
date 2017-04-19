@@ -27,7 +27,7 @@ regMCloop = R6Class(
           {
             for(a2 in self$a2range)
             {
-              self$results[[i]] = regMClass$new(ns=n,sigma=sigma,dist=dist, a2=a2, a3=1, b1=1, b2=1, b3=0, a1=1)
+              self$results[[i]] = regMClass$new(ns=n,sigma=sigma,dist=dist, a2=a2, a3=a3, b1=b1, b2=b2, b3=b3, a1=a1)
               i=i+1#next result
             }
           }
@@ -53,6 +53,7 @@ regMClass = R6Class(
     
     initialize = function(ns = 20, n=1000, b1=1, b2=1, b3=0, a1=1, a2=0, a3=1, sigma=1,dist="norm")
     { 
+      intervalrange =vector(mode="numeric",length=0)
       b1list = vector(mode="numeric",length=0)
       inInterval=vector(mode="logical",length=0)#declare vectors so that append method works
       for(j in 1:n)
@@ -80,7 +81,7 @@ regMClass = R6Class(
         #In confidence interval?
         interval = confint(hat,parm = "X1",interval="confidence")
         inInterval = append(inInterval,b1<interval[2]&b1>interval[1])
-        intervalrange = interval[2]-interval[1]
+        intervalrange = append(intervalrange,interval[2]-interval[1])
       }
       self$ns = ns # so we can sort by values used
       self$sigma = sigma
