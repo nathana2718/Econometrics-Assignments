@@ -16,7 +16,7 @@ regMCloop = R6Class(
       self$results = vector("list",length(nrange)*length(sigmarange)*length(Urange)*length(a2range))
     },
     
-    loop = function()
+    loop = function(a1=1, a3=1, b1=1, b2=1, b3=0)
     {
       i=1#elements of result vector
       for(n in self$nrange)
@@ -27,7 +27,7 @@ regMCloop = R6Class(
           {
             for(a2 in self$a2range)
             {
-              self$results[[i]] = regMClass$new(ns=n,sigma=sigma,dist=dist)
+              self$results[[i]] = regMClass$new(ns=n,sigma=sigma,dist=dist, a2=a2, a3=1, b1=1, b2=1, b3=0, a1=1)
               i=i+1#next result
             }
           }
@@ -51,7 +51,7 @@ regMClass = R6Class(
     a2 =NULL,
     
     
-    initialize = function(ns = 20, n=1000, b1=1, b2=1, b3=0, a1=1, a2=1, a3=0, sigma=1,dist="norm")
+    initialize = function(ns = 20, n=1000, b1=1, b2=1, b3=0, a1=1, a2=0, a3=1, sigma=1,dist="norm")
     { 
       b1list = vector(mode="numeric",length=0)
       inInterval=vector(mode="logical",length=0)#declare vectors so that append method works
