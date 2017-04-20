@@ -9,6 +9,7 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 set.seed(42)
 library(R6) #using R6 oop system
+library(AER)
 library(stargazer)
 ```
 
@@ -16,7 +17,6 @@ library(stargazer)
 Define two classes that generates results:
 ```{r}
 #Class that generates all combinations in a vector
-library(R6) #using R6 oop system
 regMCloop = R6Class(
   public = list(
     nrange=NULL,
@@ -34,7 +34,7 @@ regMCloop = R6Class(
       self$results = vector("list",length(nrange)*length(sigmarange)*length(Urange)*length(a2range))
     },
     
-    loop = function(a1=1, a3=1, b1=1, b2=1, b3=0)
+    loop = function(a1=1, a3=1, b1=1, b2=1, b3=0,IV=FALSE)
     {
       i=1#elements of result vector
       for(n in self$nrange)
@@ -45,7 +45,7 @@ regMCloop = R6Class(
           {
             for(a2 in self$a2range)
             {
-              self$results[[i]] = regMClass$new(ns=n,sigma=sigma,dist=dist, a2=a2, a3=a3, b1=b1, b2=b2, b3=b3, a1=a1)
+              self$results[[i]] = regMClass$new(ns=n,sigma=sigma,dist=dist, a2=a2, a3=a3, b1=b1, b2=b2, b3=b3, a1=a1,IV=IV)
               i=i+1#next result
             }
           }
@@ -72,7 +72,7 @@ regMClass = R6Class(
     a2 =NULL,
     
     
-    initialize = function(ns = 20, n=1000, b1=1, b2=1, b3=0, a1=1, a2=0, a3=1, sigma=1,dist="norm")
+    initialize = function(ns = 20, n=1000, b1=1, b2=1, b3=0, a1=1, a2=0, a3=1, sigma=1,dist="norm", IV=FALSE)
     { 
       intervalrange =vector(mode="numeric",length=0)
       b1list = vector(mode="numeric",length=0)
@@ -97,7 +97,13 @@ regMClass = R6Class(
         X1 = a1*Z1 + a2*X2 + a3*X3 +V
         Y = b1*X1 + b2*X2 +b3*X3 + sigma*U
         #Estimates
+        if(IV==FALSE){
         hat = lm(Y ~ X1+X2)
+        }
+        
+        else{
+        hat = ivreg(Y~X1+X2|X2+Z1)  
+        }
         b1list=append(b1list,hat$coefficients["X1"])
         #In confidence interval?
         interval = confint(hat,parm = "X1",interval="confidence")
@@ -188,6 +194,7 @@ Bias = vector(length=12)
     Q2a=data.frame(ndf,sigma,Distribution,Bias,SD,CovRate,CovLength)
     stargazer(Q2a,header=FALSE,type="latex",summary=FALSE)
 ```
+Calculate bias here:
 It is clear that omitted variable bias is present here with an apparent consistent bias of ~0.33. 'work out theoretical bias here'. Standard deviation is also uniformly higher compared to a) and as such confidence intervals are larger. Coverage rate is especially poor here indicating a severe deviation from the requirements and assumptions of linear regression. 
 
 Whilst $X_3$ determines $X_1$ in both 1) and 2a), it does not determine $Y$ in 1). As such, it does not fulfill  the requirements for an omitted variable bias as endogeniety does not occur:  
@@ -221,4 +228,30 @@ dataQ2b$loop(b3=1,a3=0)
     stargazer(Q2b,header=FALSE,type="latex",summary=FALSE)
 ```
 As expected bias disappears as condition 1 is removed. The another anomalies can be explained as follows:
+Insert math here
 
+3)
+```{r}
+dataQ3 = regMCloop$new(nrange=c(20,200,2000),sigmarange=c(1,2),Urange=c("norm","lognorm"))
+dataQ3$loop(b3=1,IV=TRUE)
+```
+
+```{r results='asis',echo=FALSE}
+    Bias = vector(length=12)
+    SD = vector(length=12)
+    CovRate = vector(length=12)
+    CovLength = vector(length=12)
+    for(i in 1:12){
+    Bias[i] = (dataQ3$results[[i]]$bias)
+    SD[i] =   (dataQ3$results[[i]]$sd)
+    CovRate[i] = (dataQ3$results[[i]]$CovRate)
+    CovLength[i]=(dataQ3$results[[i]]$CovLength)
+    }
+    ndf=c(rep(20,4),rep(200,4),rep(2000,4))
+    sigma  = c(rep(1,2),rep(2,2),rep(1,2),rep(2,2),rep(1,2),rep(2,2))
+    Distribution = rep(c("Normal","LogNormal"),6)
+    Q3=data.frame(ndf,sigma,Distribution,Bias,SD,CovRate,CovLength)
+    stargazer(Q3,header=FALSE,type="latex",summary=FALSE)
+```
+
+Asymptotic convergence is slower but bias is reduced eventually. Standard deviations are higher due to higher presence of multicollinearity.
