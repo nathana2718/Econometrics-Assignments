@@ -5,7 +5,7 @@ date: "April 18, 2017"
 output: pdf_document
 ---
 
-```{r setup, include=TRUE}
+```{r setup, include=TRUE, warning=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 set.seed(42)
 library(R6) #using R6 oop system
@@ -22,19 +22,21 @@ regMCloop = R6Class(
     nrange=NULL,
     sigmarange=NULL,
     Urange=NULL,
+    a1range=NULL,
     a2range=NULL,
     results = NULL,
     
-    initialize = function(nrange,sigmarange,Urange,a2range=0)
+    initialize = function(nrange,sigmarange,Urange,a2range=0,a1range=1)
     {
       self$nrange = nrange
       self$sigmarange = sigmarange
       self$Urange = Urange
       self$a2range = a2range
-      self$results = vector("list",length(nrange)*length(sigmarange)*length(Urange)*length(a2range))
+      self$a1range = a1range
+      self$results = vector("list",length(nrange)*length(sigmarange)*length(Urange)*length(a2range))#list the regMC objects in a vector
     },
     
-    loop = function(a1=1, a3=1, b1=1, b2=1, b3=0,IV=FALSE)
+    loop = function( a3=1, b1=1, b2=1, b3=0,IV=FALSE)
     {
       i=1#elements of result vector
       for(n in self$nrange)
@@ -45,8 +47,11 @@ regMCloop = R6Class(
           {
             for(a2 in self$a2range)
             {
-              self$results[[i]] = regMClass$new(ns=n,sigma=sigma,dist=dist, a2=a2, a3=a3, b1=b1, b2=b2, b3=b3, a1=a1,IV=IV)
-              i=i+1#next result
+              for(a1 in self$a1range)
+                {
+                  self$results[[i]] = regMClass$new(ns=n,sigma=sigma,dist=dist, a2=a2, a3=a3, b1=b1, b2=b2, b3=b3, a1=a1,IV=IV)
+                  i=i+1#next result
+                }
             }
           }
         }
@@ -70,6 +75,7 @@ regMClass = R6Class(
     sigma= NULL,
     dist= NULL,
     a2 =NULL,
+    a1 =NULL,
     
     
     initialize = function(ns = 20, n=1000, b1=1, b2=1, b3=0, a1=1, a2=0, a3=1, sigma=1,dist="norm", IV=FALSE)
@@ -114,6 +120,7 @@ regMClass = R6Class(
       self$sigma = sigma
       self$dist = dist
       self$a2 = a2
+      self$a1 = a1
       self$bias = mean(b1list)-1
       self$sd = sd(b1list)
       self$CovRate = mean(inInterval)
@@ -195,9 +202,24 @@ Bias = vector(length=12)
     stargazer(Q2a,header=FALSE,type="latex",summary=FALSE)
 ```
 Calculate bias here:
-It is clear that omitted variable bias is present here with an apparent consistent bias of ~0.33. 'work out theoretical bias here'. Standard deviation is also uniformly higher compared to a) and as such confidence intervals are larger. Coverage rate is especially poor here indicating a severe deviation from the requirements and assumptions of linear regression. 
+It is clear that omitted variable bias is present here with an apparent consistent bias of ~0.33.
+We can calculate the theoretical bias here:
+$$y = X_1\beta_1 + X_2 \beta_2 +X_3\beta_3 +U $$
+
+$$X_1 = \alpha_1Z_1+\alpha_3 X_3 + V_i$$
+OLS estimates:
+$$E(\hat{\beta_1}) = E\frac{\textrm{Cov}(X_1,y)}{\textrm{Var}(X_1)}$$ 
+$$E(\hat{\beta_1}) = E \frac{\textrm{Cov}(X_1,X_1\beta_1 + X_2 \beta_2 +X_3\beta_3 +U)}{\textrm{Var}(Z_1 + X_3 +U)}$$
+$$E(\hat{\beta_1}) = E \frac{\textrm{Cov}(X_1,X_1\beta_1) + \textrm{Cov}(X_1,X_2 \beta_2) + \textrm{Cov}(X_1,X_3\beta_3) + \textrm{Cov}(X_1,U)}{\textrm{Var}(Z_1 + X_3 +U)} $$
+$$E(\hat{\beta_1}) = E \frac{\beta_1Var(X_1) +  \beta_20 + \textrm{Cov}(Z_1+X_3+U,X_3\beta_3) + 0}{\textrm{Var}(Z_1 + X_3 +U)} $$
+$$E(\hat{\beta_1}) = E(\beta_1 + \frac{ \textrm{Cov}(Z_1+X_3+U,X_3\beta_3)}{\textrm{Var}(Z_1 + X_3 +U)}) $$
+$$E(\hat{\beta_1}) = E (\beta_1 + \frac{\beta_3 \textrm{Cov}(Z_1,X_3) + \beta_3 \textrm{Cov}(X_3,X_3)+\textrm{Cov}(U,X_3) }{1 + 1 +1} ) $$
+$$E(\hat{\beta_1}) = \beta_1 + \frac{  1 }{3} $$
+$$\textrm{Bias} = \frac{1}{3}$$
+Standard deviation is also uniformly higher compared to a) and as such confidence intervals are larger. Coverage rate is especially poor here indicating a severe deviation from the requirements and assumptions of linear regression. 
 
 Whilst $X_3$ determines $X_1$ in both 1) and 2a), it does not determine $Y$ in 1). As such, it does not fulfill  the requirements for an omitted variable bias as endogeniety does not occur:  
+
 1) The omitted variable must be a determinant of the dependant variable(ie. regression coefficient is non-zero)
 2) Omitted variable is correlated with the explanatory variable. 
 
@@ -227,10 +249,19 @@ dataQ2b$loop(b3=1,a3=0)
     Q2b=data.frame(ndf,sigma,Distribution,Bias,SD,CovRate,CovLength)
     stargazer(Q2b,header=FALSE,type="latex",summary=FALSE)
 ```
+
 As expected bias disappears as condition 1 is removed. The another anomalies can be explained as follows:
 Insert math here
 
-3)
+3a)
+Yes, it satisfies the two conditions required for an IV.
+
+1) Z is not correlated with Y other than through $X_1$
+2) Z is correlated with $X_1$
+
+
+
+3b)
 ```{r}
 dataQ3 = regMCloop$new(nrange=c(20,200,2000),sigmarange=c(1,2),Urange=c("norm","lognorm"))
 dataQ3$loop(b3=1,IV=TRUE)
@@ -255,3 +286,58 @@ dataQ3$loop(b3=1,IV=TRUE)
 ```
 
 Asymptotic convergence is slower but bias is reduced eventually. Standard deviations are higher due to higher presence of multicollinearity.
+
+We can also prove that the IV estimate has higher standard deviation than the OLS one.
+$$ $$
+
+4)
+As the correlation between Z and X decreases, Z becomes takes on more and more of the characteristics of a weak instrument until it becomes an invalid instrument at 0. Bias increases accordingly, and the convergence of the estimator is slower.
+```{r}
+dataQ4 = regMCloop$new(nrange=200,sigmarange=1,Urange="norm",a1range=c(0.8,seq(0.6,0,by=-0.1)))
+dataQ4$loop(b3=1,IV=TRUE)
+```
+
+```{r results='asis',echo=FALSE}
+    Bias = vector(length=8)
+    SD = vector(length=8)
+    CovRate = vector(length=8)
+    CovLength = vector(length=8)
+    for(i in 1:8){
+    Bias[i] = (dataQ4$results[[i]]$bias)
+    SD[i] =   (dataQ4$results[[i]]$sd)
+    CovRate[i] = (dataQ4$results[[i]]$CovRate)
+    CovLength[i]=(dataQ4$results[[i]]$CovLength)
+    }
+    ndf=rep(200,8)
+    sigma  = rep(1,8)
+    Distribution = rep("Normal",8)
+    Q4=data.frame(ndf,sigma,Distribution,Bias,SD,CovRate,CovLength)
+    stargazer(Q4,header=FALSE,type="latex",summary=FALSE)
+```
+
+5)
+```{r}
+dataQ5 = regMCloop$new(nrange=200,sigmarange=1,Urange="norm",a2range=100)
+dataQ5$loop()
+```
+```{r}
+dataQ5$results[[1]]
+```
+
+```{r results='asis',echo=FALSE}
+    Bias = vector(length=5)
+    SD = vector(length=5)
+    CovRate = vector(length=5)
+    CovLength = vector(length=5)
+    for(i in 1:5){
+    Bias[i] = (dataQ5$results[[i]]$bias)
+    SD[i] =   (dataQ5$results[[i]]$sd)
+    CovRate[i] = (dataQ5$results[[i]]$CovRate)
+    CovLength[i]=(dataQ5$results[[i]]$CovLength)
+    }
+    ndf=rep(200,5)
+    sigma  = rep(1,5)
+    Distribution = rep("Normal",5)
+    Q4=data.frame(ndf,sigma,Distribution,Bias,SD,CovRate,CovLength)
+    stargazer(Q4,header=FALSE,type="latex",summary=FALSE)
+```
