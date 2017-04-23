@@ -1,0 +1,97 @@
+---
+title: "MicroeconomicsAssignment3"
+author: "NathanAung"
+date: "April 23, 2017"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##Q2
+a)
+Call $\Gamma$ a two player game with infinite strategy space $S_i$ and utility function(for a given player):
+
+$$u_i : S \rightarrow \mathbb{R}, i\in \mathbb{N}: $$
+$$ U_{i}(T_i) =  100\frac{T_i}{T_i + T_j} -T_i$$
+Call the two players in tis game A and B.
+
+The expected payoff given that we know both the amount of tickets player A and B put in is:
+
+$$\mathbb{E}(U_A(T_A,T_B)) = 100\frac{T_A}{T_A + T_B} -T_A$$
+where:
+$$ T_A,T_B \in [0,\infty)$$
+
+Further, given that player A does not know player B's ticket number, we can model it still with T_B as a random variable with density $f_{T_B}$:
+
+$$\mathbb{E}(U_A(T_A,T_B)) = 100 \int_0^\infty f_{T_B}(T_B) \frac{T_A}{T_A + T_B} dT_B -T_A$$
+
+Formally this follows by law of the unconscious statistician:
+$$\mathbb{E}(g(X)) = \int_X f_{X}(x) g(x) dx$$ 
+From both equations we can infer that the fraction is restricted between  0 and 1 and that therefore the maximal payoff is 100. We can also guarantee with probability 1 that the expected payoff will be 0 by setting $T_A=0$. Therefore, a rational player seeking to maximise payoff will never pay more than 100 tickets as the maximal payoff will with probability 1 be negative. Therefore the rational player will always opt for buying 0 tickets. 
+
+If we reason this, we can restrict the domain of each random variable to [0,100]. Therefore:
+
+$$\mathbb{E}(U_A(T_A,T_B)) = 100 \int_0^{100} f_{T_B}(T_B) \frac{T_A}{T_A + T_B} dT_B -T_A$$
+This guarantees that a nash equilibrium exists as the choice set is compact.
+
+b) The best responses for a player than depends on their risk profile and what he believes about the probability of the other player. They will however only buy within the range of 0 and 100 tickets. 
+
+c) Yes - 25,25. No player stands to gain anything by deviating from this position.
+
+ie. graphically given the other player is at 25.
+```{r}
+library(ggplot2)
+fun.1 <- function(x) 100*(x)/(x+25) - x
+fun.2 <- function(x) 100*(25)/(x+25)^2 -1
+axis1<- function(x) 0
+plotspace <- ggplot(data=data.frame(x=0),mapping=aes(x=x))
+plotspace + stat_function(fun=fun.1,col="blue") + stat_function(fun=fun.2,col="red")+ stat_function(fun=axis1) + xlim(0,100)
+```
+
+d)
+
+If this is the case:
+
+$$\mathbb{E}(U_A(T_A,T_B)) = 100\frac{T_A}{T_A + T_B} -T_A$$
+To maximise this utility for B then we need to solve the following optimisation problem:
+
+$$ \underset{T_A}{\arg \max} \ \mathbb{E}(U_A(T_A,T_B)) = 100\frac{T_A}{T_A + T_B} -T_A $$
+We can clearly see that the space is concave so solving for turning points will find the global maximum.
+$$ \frac{\partial  \mathbb{E}(U_A(T_A,T_B))}{\partial {T_A}} = 100\frac{T_A+T_B - T_A}{(T_A+T_B)^2} - 1   = 0$$ 
+$$\frac{100T_B - (T_A+T_B)^2 }{(T_A+T_B)^2} = 0$$
+$$\therefore 100T_B - (T_A+T_B)^2) = 0 $$
+$$-(T_A^2 +2T_AT_B + T_B^2 - 100T_B)  = 0 $$
+$$ T_A =\frac{-2T_B\pm\sqrt{4T_B^2-4(T_B^2 -100T_B)}}{2}  $$
+
+
+$$ T_A =\frac{-2T_B\pm\sqrt{400T_B}}{2}  $$
+
+$$ T_A =-T_B \pm 10\sqrt{T_B} $$
+Number of tickets is positive so:
+$$ T_A = 10\sqrt{T_B} - T_B$$
+
+The other player will know this so by backwards induction:
+
+$$\mathbb{E}(U_B(T_A,T_B)) = 100\frac{T_B}{T_A + T_B} -T_B$$
+
+$$\mathbb{E}(U_B(T_A,T_B)) = 100\frac{T_B}{10\sqrt{T_B} - T_B + T_B} -T_B$$
+$$\mathbb{E}(U_B(T_A,T_B)) = 100\frac{T_B}{10\sqrt{T_B}} -T_B$$
+$$\mathbb{E}(U_B(T_A,T_B)) = 10{\sqrt{T_B}} -T_B$$
+To maximise this:
+
+$$5{T_B}^{-\frac{1}{2}} -1 = 0 $$
+$$5-\sqrt{T_B} = 0 $$
+$$T_B = 25$$
+
+This then forces player A to play 25 as well as per the equation shown. So in actuality, this has the same outcome as the previous result.
+
+f) In this case, if the first player picks 0 and the second player sees this, than the second player will pick the smallest possible value. Interestingly enough in the continuous case, because the theoretical maximum is a limit point which is defined to be equal to zero in the function, there is no maximum. The discrete case is much easier so we will use that for this discussion. If the first player picks 0 tickets, the second player will pick the smallest amount of tickets. ie. if the smallest amount of tickets one can buy is one, then player two will only buy one. 
+
+This guarantees them the 100 cents at the cost of a cent leading to a certain payoff of 99 cents. 
+
+If player 2 sees otherwise(player one bought some tickets), the game will descend into the first game(no information about other player). The only information player 2 will have is that player 1 did not pick 0 and therefore, the best choice would be to play 25 again.
+
+
+

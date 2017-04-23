@@ -71,21 +71,30 @@ regMClass = R6Class(
     sd = NULL,
     CovRate=NULL,
     CovLength=NULL,
+    bias2 =NULL,
+    sd2 = NULL,
+    CovRate2 = NULL,
+    CovLength2 = NULL,
     ns = NULL,
     sigma= NULL,
     dist= NULL,
     a2 =NULL,
     a1 =NULL,
+    fittedvalues = NULL,
     
     
     initialize = function(ns = 20, n=1000, b1=1, b2=1, b3=0, a1=1, a2=0, a3=1, sigma=1,dist="norm", IV=FALSE)
     { 
       intervalrange =vector(mode="numeric",length=0)
+      intervalrange2 =vector(mode="numeric",length=0)
       b1list = vector(mode="numeric",length=0)
-      inInterval=vector(mode="logical",length=0)#declare vectors so that append method works
+      b2list = vector(mode="numeric",length=0)
+      inInterval=vector(mode="logical",length=0)
+      inInterval2=vector(mode="logical",length=0)#declare vectors so that append method works
       for(j in 1:n)
       {
         #__init__
+        #we dont use a multivariate normal to generate it as this is equivalent.(independant and jointly mvr normal)
         Z1 = rnorm(n=ns,mean=0,sd=1)
         X2 = rnorm(n=ns,mean=0,sd=1)
         X3 = rnorm(n=ns,mean=0,sd=1)
@@ -98,9 +107,11 @@ regMClass = R6Class(
         else
         {
           U = rlnorm(n=ns,mean=0,sd=1)
+          U=(U-mean(U))/sd(U)#z score rescaled
         }
         #Generate X1 and Y
         X1 = a1*Z1 + a2*X2 + a3*X3 +V
+        X1 = X1/sd(X1) #renormalising so all values have sd of 1
         Y = b1*X1 + b2*X2 +b3*X3 + sigma*U
         #Estimates
         if(IV==FALSE){
@@ -111,20 +122,38 @@ regMClass = R6Class(
         hat = ivreg(Y~X1+X2|X2+Z1)  
         }
         b1list=append(b1list,hat$coefficients["X1"])
+        b2list=append(b2list,hat$coefficients["X1"])
         #In confidence interval?
+        #b1
         interval = confint(hat,parm = "X1",interval="confidence")
         inInterval = append(inInterval,b1<interval[2]&b1>interval[1])
         intervalrange = append(intervalrange,interval[2]-interval[1])
+        #b2
+        interval2 = confint(hat,parm = "X2",interval="confidence")
+        inInterval2 = append(inInterval2,b2<interval2[2]&b2>interval[1])
+        intervalrange2 = append(intervalrange2,interval2[2]-interval2[1])
+        fittedvalues = hat$fitted.values
+        
+        #note that this could be probably be optimised by a running mean,sd tally . This is however a little more readable.
+        
       }
       self$ns = ns # so we can sort by values used
       self$sigma = sigma
       self$dist = dist
       self$a2 = a2
       self$a1 = a1
+      
       self$bias = mean(b1list)-1
       self$sd = sd(b1list)
       self$CovRate = mean(inInterval)
       self$CovLength = mean(intervalrange)
+      
+      self$bias2 = mean(b2list)-1
+      self$sd2 = sd(b2list)
+      self$CovRate2 = mean(inInterval2)
+      self$CovLength2 = mean(intervalrange2)
+      
+      self$fittedvalues = fittedvalues
     }
   )
 )
@@ -137,8 +166,8 @@ We use a nested loop to generate all combinations needed and store them in a vec
 dataQ1 = regMCloop$new(nrange=c(20,200,2000),sigmarange=c(1,2),Urange=c("norm","lognorm"))
 dataQ1$loop()
 ```
-Here we create an instance of the class and use the loop methods to generate the results. This does take some time(~20s) as we are looping over quite a large number of iterations.
-```{r results='asis',echo=FALSE}
+Here we create an instance of the class and use the loop methods to generate the results. This does take some time(~20s) as we are looping over quite a large number of iterations. We shall show the code here for this instance but as the code is largely similar, we will not show it for the sake of cluttering in following sections. This probably could have been a method for the regMCloop class.
+```{r results='asis',echo=TRUE}
     Bias = vector(length=12)
     SD = vector(length=12)
     CovRate = vector(length=12)
@@ -157,7 +186,7 @@ Here we create an instance of the class and use the loop methods to generate the
 ```
 
 #a)
-In all combinations, $|\textrm{bias}|$ is unanimously within $\pm$ $0.005$ of 0. Considering that even under all combinations in which the number of samples is 20 that this is present, these results strongly indicate that the estimator is or very close to unbiased. It is impossible to say definitively due to the stochastic nature of the simulation, however the weak law of large numbers and central limit theorem point to this conclusion. This seems appropriate considering the theoretical aspects of the estimator. (more explanation needed here?)
+In all combinations, $|\textrm{bias}|$ is unanimously within $\pm$ $0.005$ of 0. Considering that even under all combinations in which the number of samples is 20 that this is present, these results strongly indicate that the estimator is or very close to unbiased. It is impossible to say definitively due to the stochastic nature of the simulation, however the weak law of large numbers and central limit theorem point to this conclusion. This seems appropriate considering the theoretical aspects of the estimator. This is explained by the Gauss Markov Theorem, which guarantees that the OLS is the best unbiased linear estimator. 
 
 #b)
 For each combination, of $\sigma$ and distribution, we vary the number of samples and observe the results. In nearly all cases, bias decreases monotonically throughout.  In the few cases where it does not, bias is very close to zero and is still within the same order of magnitude of the previous estimate. This is to be expected even with a consistent estimator as the estimator becomes closer and closer to the true value of the variable. Perhaps with a higher number of simulations, this error would be reduced. Further, testing across a larger number of sample sizes may have graphically indicated the monotonicity of the bias as sample size increased. With only three data points, there could be any number of small changes in between. 
@@ -166,19 +195,21 @@ For each combination, of $\sigma$ and distribution, we vary the number of sample
 Coverage rate is consistently within 0.15 of the expected $95\%$ coverage. Coverage rates between normal and log normal distributions appear to be inconclusive. Similarly, $\sigma$ appears to have limited effect on coverage rate.  The number of samples also inconclusive. One could of course perform an anova test to show these and reveal possible interaction effects.
 
 #d)
-For all combinations, log normal generates much large confidence intervals than its normal counterpart.
+For all combinations, log normal would have generated much large confidence intervals than its normal counterpart.
 
 This can be seen by examining the variance of normal and log normal distributions. With standard deviation $\sigma$, the variance for normal and lognormal respectively is:
 
 $$ \sigma ^2 $$
 
 $$ (e^{\sigma^2} -1)(e^{2\mu+\sigma^2})$$
+However because we z-score standardised the data in some cases it may be more accurate than the normal case - z-score scaling skews the data as every lognormal error has mean 0 and standard deviation 1. Obviously, if one draws from a distribution, not every sample will have this present. 
 
 One can verify that for all values the variance will be greater for the log normal case . Therefore the estimated standard deviation will be much larger for the distribution and thus parameter estimates will have a larger confidence interval for the same coverage rate.
 
 This can be verified again as for unitary $\sigma$, the coverage rate is far smaller than their $\sigma=2$ counterparts. 
 
 Sample size reduces interval length drastically for all combinations. 
+
 2a)
 ```{r}
 dataQ2a = regMCloop$new(nrange=c(20,200,2000),sigmarange=c(1,2),Urange=c("norm","lognorm"))
@@ -202,7 +233,7 @@ Bias = vector(length=12)
     stargazer(Q2a,header=FALSE,type="latex",summary=FALSE)
 ```
 Calculate bias here:
-It is clear that omitted variable bias is present here with an apparent consistent bias of ~0.33.
+It is clear that omitted variable bias is present here with an apparent consistent bias of 1. This would be ~0.33 if X1 was not rescaled..
 We can calculate the theoretical bias here:
 $$y = X_1\beta_1 + X_2 \beta_2 +X_3\beta_3 +U $$
 
@@ -216,6 +247,8 @@ $$E(\hat{\beta_1}) = E(\beta_1 + \frac{ \textrm{Cov}(Z_1+X_3+U,X_3\beta_3)}{\tex
 $$E(\hat{\beta_1}) = E (\beta_1 + \frac{\beta_3 \textrm{Cov}(Z_1,X_3) + \beta_3 \textrm{Cov}(X_3,X_3)+\textrm{Cov}(U,X_3) }{1 + 1 +1} ) $$
 $$E(\hat{\beta_1}) = \beta_1 + \frac{  1 }{3} $$
 $$\textrm{Bias} = \frac{1}{3}$$
+When X1 is rescaled,the bottom term is simply 1, and thus bias becomes 1.
+
 Standard deviation is also uniformly higher compared to a) and as such confidence intervals are larger. Coverage rate is especially poor here indicating a severe deviation from the requirements and assumptions of linear regression. 
 
 Whilst $X_3$ determines $X_1$ in both 1) and 2a), it does not determine $Y$ in 1). As such, it does not fulfill  the requirements for an omitted variable bias as endogeniety does not occur:  
@@ -257,8 +290,9 @@ Insert math here
 Yes, it satisfies the two conditions required for an IV.
 
 1) Z is not correlated with Y other than through $X_1$
-2) Z is correlated with $X_1$
+2) Z is correlated relatively strongly with $X_1$
 
+We know Z is not correlated with Y as it is generated independantly. 
 
 
 3b)
@@ -285,13 +319,10 @@ dataQ3$loop(b3=1,IV=TRUE)
     stargazer(Q3,header=FALSE,type="latex",summary=FALSE)
 ```
 
-Asymptotic convergence is slower but bias is reduced eventually. Standard deviations are higher due to higher presence of multicollinearity.
+Asymptotic convergence is slower but bias is reduced eventually. Standard deviations are higher due to higher presence of multicollinearity and use of IV estimates. 
 
-We can also prove that the IV estimate has higher standard deviation than the OLS one.
-$$ $$
 
 4)
-As the correlation between Z and X decreases, Z becomes takes on more and more of the characteristics of a weak instrument until it becomes an invalid instrument at 0. Bias increases accordingly, and the convergence of the estimator is slower.
 ```{r}
 dataQ4 = regMCloop$new(nrange=200,sigmarange=1,Urange="norm",a1range=c(0.8,seq(0.6,0,by=-0.1)))
 dataQ4$loop(b3=1,IV=TRUE)
@@ -315,13 +346,15 @@ dataQ4$loop(b3=1,IV=TRUE)
     stargazer(Q4,header=FALSE,type="latex",summary=FALSE)
 ```
 
+As the correlation between Z and X decreases, Z becomes takes on more and more of the characteristics of a weak instrument until it becomes an invalid instrument at 0. Bias increases accordingly, and the convergence of the estimator is slower. Because convergence for every given sample size increases with the strength of the IV, standard deviation at every sample size is decreases accordingly. This has the follow over effect of increasing confidence interval lengths. Bias is also higher due to finite sample bias in Iv regression. 
+
+Obviously when $\alpha_1$ becomes zero it is longer an instrument and therefore the IVreg method is invalid.  However when the instrumental variable is invalid, the bias and standard deviation curiously drops. This can be explained for a number of reasons which were outlined in the previous assignment.  We again cite Morgan and Winship. Firstly, IV estimates can always be estimated as sample covariances are never exactly equal to zero (cannot draw an infinite sample). Therefore even for invalid instruments, Iv estimates can be computed. In fact, estimators for the standard errors are constructed under the assumption that the IV is valid and thereby generate "artificially small standard errors" (Morgan and Winship, 2015). 
+
+
 5)
 ```{r}
-dataQ5 = regMCloop$new(nrange=200,sigmarange=1,Urange="norm",a2range=100)
+dataQ5 = regMCloop$new(nrange=200,sigmarange=1,Urange="norm",a2range=seq(0,10,by=2))
 dataQ5$loop()
-```
-```{r}
-dataQ5$results[[1]]
 ```
 
 ```{r results='asis',echo=FALSE}
@@ -338,6 +371,54 @@ dataQ5$results[[1]]
     ndf=rep(200,5)
     sigma  = rep(1,5)
     Distribution = rep("Normal",5)
-    Q4=data.frame(ndf,sigma,Distribution,Bias,SD,CovRate,CovLength)
-    stargazer(Q4,header=FALSE,type="latex",summary=FALSE)
+    Q5=data.frame(ndf,sigma,Distribution,Bias,SD,CovRate,CovLength)
+    stargazer(Q5,header=FALSE,type="latex",summary=FALSE)
 ```
+$\beta_1$ does not appear to change with $\alpha_2$. At first this may seem surprising - common literature holds that multicollinearity increases standard errors. 
+
+However we see that this is only the case for $\beta_2$:
+
+
+```{r results='asis',echo=FALSE}
+    Bias = vector(length=5)
+    SD = vector(length=5)
+    CovRate = vector(length=5)
+    CovLength = vector(length=5)
+    for(i in 1:5){
+    Bias[i] = (dataQ5$results[[i]]$bias2)
+    SD[i] =   (dataQ5$results[[i]]$sd2)
+    CovRate[i] = (dataQ5$results[[i]]$CovRate2)
+    CovLength[i]=(dataQ5$results[[i]]$CovLength2)
+    }
+    ndf=rep(200,5)
+    sigma  = rep(1,5)
+    Distribution = rep("Normal",5)
+    Q5b2=data.frame(ndf,sigma,Distribution,Bias,SD,CovRate,CovLength)
+    stargazer(Q5b2,header=FALSE,type="latex",summary=FALSE)
+```
+
+The intuitive reasoning can be explained by thinking of the uncorrelated model(a2=0). In this case we have n points, in p dimensional space. ie. the column space of $X$. We seek to find the linear combination of these vectors which best explain y. A more precise way of defining this is we wish to find a project the data onto a hyperplane H such that the projection has smallest distance with y.  In this case, its a little simpler - we have a column space with rank 2. 
+
+In the correlated case, one of the columns is nearly linearly dependant on the other. 
+
+eg. 
+$$X_{1,new} = Z_1 + 5X_2 + U$$
+
+In this case:
+$$X1_{new} \sim X1_{old} + 4X_2$$
+
+
+Then:
+
+$$\hat{Y} = \beta_1 X_{1,new} + \beta_2 X_2$$
+
+$$\hat{Y} = \beta_1 X_{1,old} + \beta_{1,old} 4 X_{2} + \beta_2 X_2 $$
+
+If we set 
+$$\beta_{2,new} = 1-4\beta_{1,old}$$
+
+Then our estimate for $\hat{Y}$ should be similar to our old one whilst keeping $\beta_1$ the same. Then $\beta_1$ would only vary in so much as $X_1$ would vary normally. However as $\beta_2$ has to compensate for the increasing value of $\alpha_2$, any variation in $X_2$ is magnified by the value of $\alpha_2$. Therefore as $\alpha_2$ increases, $\beta_2$  continuously changes and the standard deviation also increases. 
+
+Ths reason why the old $Y_hat$ is roughly the same value as the new one is because no new dimensions have really been added to the column space - X_2 is simply added again and as  a projection is a linear combination, this can be compensated for very precisely.
+
+
