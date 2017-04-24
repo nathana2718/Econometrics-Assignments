@@ -240,14 +240,14 @@ $$y = X_1\beta_1 + X_2 \beta_2 +X_3\beta_3 +U $$
 $$X_1 = \alpha_1Z_1+\alpha_3 X_3 + V_i$$
 OLS estimates:
 $$E(\hat{\beta_1}) = E\frac{\textrm{Cov}(X_1,y)}{\textrm{Var}(X_1)}$$ 
-$$E(\hat{\beta_1}) = E \frac{\textrm{Cov}(X_1,X_1\beta_1 + X_2 \beta_2 +X_3\beta_3 +U)}{\textrm{Var}(Z_1 + X_3 +U)}$$
-$$E(\hat{\beta_1}) = E \frac{\textrm{Cov}(X_1,X_1\beta_1) + \textrm{Cov}(X_1,X_2 \beta_2) + \textrm{Cov}(X_1,X_3\beta_3) + \textrm{Cov}(X_1,U)}{\textrm{Var}(Z_1 + X_3 +U)} $$
-$$E(\hat{\beta_1}) = E \frac{\beta_1Var(X_1) +  \beta_20 + \textrm{Cov}(Z_1+X_3+U,X_3\beta_3) + 0}{\textrm{Var}(Z_1 + X_3 +U)} $$
-$$E(\hat{\beta_1}) = E(\beta_1 + \frac{ \textrm{Cov}(Z_1+X_3+U,X_3\beta_3)}{\textrm{Var}(Z_1 + X_3 +U)}) $$
-$$E(\hat{\beta_1}) = E (\beta_1 + \frac{\beta_3 \textrm{Cov}(Z_1,X_3) + \beta_3 \textrm{Cov}(X_3,X_3)+\textrm{Cov}(U,X_3) }{1 + 1 +1} ) $$
-$$E(\hat{\beta_1}) = \beta_1 + \frac{  1 }{3} $$
-$$\textrm{Bias} = \frac{1}{3}$$
-When X1 is rescaled,the bottom term is simply 1, and thus bias becomes 1.
+We use an approximation here as every $X_1$ value will be scaled slightly differently due to the method prescribed in rescaling the standard deviation to one.
+$$E(\hat{\beta_1}) = E \frac{\textrm{Cov}(X_1,\frac{1}{\sqrt3}(X_1\beta_1 + X_2 \beta_2 +X_3\beta_3 +U))}{1}$$
+$$E(\hat{\beta_1}) = E \frac{\textrm{Cov}(X_1,X_1\beta_1) + \textrm{Cov}(X_1,X_2 \beta_2) + \textrm{Cov}(X_1,X_3\beta_3) + \textrm{Cov}(X_1,U)}{\sqrt{3}} $$
+$$E(\hat{\beta_1}) = E \frac{\beta_1Var(X_1) +  \beta_20 + \textrm{Cov}(Z_1+X_3+U,X_3\beta_3) + 0}{\sqrt{3}} $$
+$$E(\hat{\beta_1}) = E(\beta_1 + \frac{ \textrm{Cov}(Z_1+X_3+U,X_3\beta_3)}{\sqrt{3}} $$
+$$E(\hat{\beta_1}) = E (\beta_1 + \frac{\beta_3 \textrm{Cov}(Z_1,X_3) + \beta_3 \textrm{Cov}(X_3,X_3)+\textrm{Cov}(U,X_3) }{\sqrt{3}} ) $$
+$$E(\hat{\beta_1}) = \beta_1 + \frac{  1 }{\sqrt{3} $$
+$$\textrm{Bias} = \frac{1}{\sqrt{3}} \approx 0.5773$$
 
 Standard deviation is also uniformly higher compared to a) and as such confidence intervals are larger. Coverage rate is especially poor here indicating a severe deviation from the requirements and assumptions of linear regression. 
 
