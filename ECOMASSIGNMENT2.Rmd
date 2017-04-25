@@ -192,7 +192,9 @@ In all combinations, $|\textrm{bias}|$ is unanimously within $\pm$ $0.005$ of 0.
 For each combination of $\sigma$ and probabilistic error distribution, we vary the number of samples and observe the results. In nearly all cases, bias decreases monotonically throughout.  In the few cases where it does not, bias is very close to zero and is still within the same order of magnitude of the previous estimate. This is to be expected even with a consistent estimator as the estimator converges to the true value of the variable asymptotically. Perhaps with a higher number of simulations, this error could be reduced further. Testing across a larger number of sample sizes may have also graphically indicated the monotonicity of the bias as sample size increased. With only three data points, there could be any number of small changes in between. 
 
 #c)
-Coverage rate is consistently within 0.15 of the expected $95\%$ coverage. Coverage rates between normal and log normal distributions appear to be inconclusive - that is there seems to be little difference. Similarly, $\sigma$ appears to have limited effect on coverage rate. Higher standard deviation appears to slightly negatively affect coverage rate though the effect is again quite minute.  The number of samples is also inconclusive - coverage rate appears to be uniform across n. One could of course perform an anova test to show these and reveal possible interaction effects.
+Coverage rate is consistently within 0.15 of the expected $95\%$ coverage. Coverage rates between normal and log normal distributions appear to be uniform - little difference is present. While one might expect the log normal case to have significantly less coverage rate, especially because the log normal is assymetric, it may be that one side my compensate for the other. ie. one side may be quite far outside the interval while the other may have a lot more than would be expected. 
+
+Similarly, $\sigma$ appears to have limited effect on coverage rate. Higher standard deviation appears to slightly negatively affect coverage rate though the effect is again quite minute.  The number of samples also seems to not have any effect - coverage rate appears to be uniform across n. 
 
 #d)
 For all combinations, log normal would have generated much larger confidence intervals than its normal counterpart.
@@ -245,6 +247,8 @@ $$E(\hat{\beta_1}) = E\frac{\textrm{Cov}(X_1,y)}{\textrm{Var}(X_1)}$$
 
 We use an approximation here as every $X_1$ value will be scaled slightly differently due to the method prescribed in rescaling the standard deviation to one.
 $$E(\hat{\beta_1}) = E \frac{\textrm{Cov}(X_1,\frac{1}{\sqrt3}(X_1\beta_1 + X_2 \beta_2 +X_3\beta_3 +U))}{1}$$
+The $1/\sqrt{3}$ is a result of rescaling X1 to have a standard deviation of one. While it is unlikely that the estimated standard deviation is actually one each time (because it is estimated), this is a good approximation.
+
 $$E(\hat{\beta_1}) = E \frac{\textrm{Cov}(X_1,X_1\beta_1) + \textrm{Cov}(X_1,X_2 \beta_2) + \textrm{Cov}(X_1,X_3\beta_3) + \textrm{Cov}(X_1,U)}{\sqrt{3}} $$
 $$E(\hat{\beta_1}) = E \frac{\beta_1Var(X_1) +  \beta_20 + \textrm{Cov}(Z_1+X_3+U,X_3\beta_3) + 0}{\sqrt{3}} $$
 $$E(\hat{\beta_1}) = E(\beta_1 + \frac{ \textrm{Cov}(Z_1+X_3+U,X_3\beta_3)}{\sqrt{3}} $$
@@ -263,31 +267,8 @@ Whilst condition 2) is present through both questions, condition 1 only holds fo
 
 
 2b)
-```{r}
-dataQ2b = regMCloop$new(nrange=c(20,200,2000),sigmarange=c(1,2),Urange=c("norm","lognorm"))
-dataQ2b$loop(b3=1,a3=0)
-```
 
-```{r results='asis',echo=FALSE}
-    Bias = vector(length=12)
-    SD = vector(length=12)
-    CovRate = vector(length=12)
-    CovLength = vector(length=12)
-    for(i in 1:12){
-    Bias[i] = (dataQ2b$results[[i]]$bias)
-    SD[i] =   (dataQ2b$results[[i]]$sd)
-    CovRate[i] = (dataQ2b$results[[i]]$CovRate)
-    CovLength[i]=(dataQ2b$results[[i]]$CovLength)
-    }
-    ndf=c(rep(20,4),rep(200,4),rep(2000,4))
-    sigma  = c(rep(1,2),rep(2,2),rep(1,2),rep(2,2),rep(1,2),rep(2,2))
-    Distribution = rep(c("Normal","LogNormal"),6)
-    Q2b=data.frame(ndf,sigma,Distribution,Bias,SD,CovRate,CovLength)
-    stargazer(Q2b,header=FALSE,type="latex",summary=FALSE)
-```
-
-Bias will disappear as condition 1 is removed. There may be higher standard deviation than question one still as the variance of $\beta$ 
-can be calculated like so:
+Bias is expected disappear as condition 1 is removed. There may be higher standard deviation than question one still as the variance of $\beta$ can be calculated like so:
 
 $$ \textrm{Var}(\beta) = \textrm{Var}((X^TX)^{-1}X^Ty) $$
 
@@ -296,7 +277,7 @@ $$ \textrm{Var}(\hat{\beta}) =  (X^TX)^{-1}X^T) \sigma X(X^TX)^{-1}$$
 $$ \textrm{Var}(\hat{\beta}) =  \sigma (X^TX)^{-1}$$
 And so depends on $\sigma$. In this case as $X_3$ is unobservable, it simply adds to the noise, thereby increasing variance. This in turn increases the lengh of the confidence interval.
 
-Coverage rate improves as well due to no omitted variable bias. This means the range of values predicted by the confidence interval matches the true mean of the data.
+Coverage rate is likely to improve as well due to no omitted variable bias. This means the range of values predicted by the confidence interval matches the true mean of the data.
 
 ##Q3
 a)
@@ -373,6 +354,7 @@ As the correlation between Z and X decreases, Z becomes takes on more and more o
 
 Obviously when $\alpha_1$ becomes zero it is no longer an instrument and therefore the IVreg method is invalid.  However when the instrumental variable is invalid, the bias and standard deviation curiously drops. This can be explained for a number of reasons which were outlined in the previous assignment.  We again cite Morgan and Winship. Firstly, IV estimates can always be estimated as sample covariances are never exactly equal to zero (cannot draw an infinite sample). Therefore even for invalid instruments, Iv estimates can be computed. In fact, estimators for the standard errors are constructed under the assumption that the IV is valid and thereby generate "artificially small standard errors" (Morgan and Winship, 2015). 
 
+\newpage
 
 ##Q5
 ```{r}
@@ -399,63 +381,13 @@ dataQ5$loop()
 ```
 
 
+Multicollinearity is present for $\alpha_2>0$ here. 
 
-```{r results='asis',echo=FALSE}
-    Bias = vector(length=5)
-    SD = vector(length=5)
-    CovRate = vector(length=5)
-    CovLength = vector(length=5)
-    for(i in 1:5){
-    Bias[i] = (dataQ5$results[[i]]$bias2)
-    SD[i] =   (dataQ5$results[[i]]$sd2)
-    CovRate[i] = (dataQ5$results[[i]]$CovRate2)
-    CovLength[i]=(dataQ5$results[[i]]$CovLength2)
-    }
-    ndf=rep(200,5)
-    sigma  = rep(1,5)
-    Distribution = rep("Normal",5)
-    Q5b2=data.frame(ndf,sigma,Distribution,Bias,SD,CovRate,CovLength)
-    stargazer(Q5b2,header=FALSE,type="latex",summary=FALSE)
-```
+We know that $X_1$ can be expressed as:
 
-The intuitive reasoning can be explained by thinking of the uncorrelated model(a2=0). In this case we have n points, in p dimensional space. ie. the column space of $X$. We seek to find the linear combination of these vectors that best explain y. A more precise way of defining this is we wish to project the data onto a hyperplane H spanned by the column space of X such that the projection has smallest distance with y. The error term is than perpendicular to this hyperplane.  In this case, it's a little simpler - we have a column space with rank 2. 
+$$ X_1 =\frac{1}{\sqrt{2+\alpha_2^2}} ( Z_1 + \alpha_2 X_2 + V) $$  
+This is due to normalising the standard deviation to 1 again.
 
-In simpler terms we seek to find which is closest to Y.
-
-$$ \hat{Y} = \hat{\beta_1} X_1 + \hat{\beta_2} X_2 $$
-When the X values are near correlated the span of X is nearly unchanged so we can obtain similar estimates for Y. However as one of the values will be changed, the actual linear combination required may change. 
-
-In the correlated case, one of the columns is nearly linearly dependant on the other. 
-
-eg. 
-$$X_{1,new} = Z_1 + 5X_2 + U$$
-
-In this case:
-$$X1_{new} \sim X1_{old} + 4X_2$$
-
-
-Then:
-
-$$\hat{Y} = \beta_1 X_{1,new} + \beta_2 X_2$$
-
-$$\hat{Y} = \beta_1 X_{1,old} + \beta_{1,old} 4 X_{2} + \beta_2 X_2 $$
-
-If we set 
-$$\beta_{2,new} = 1-4\beta_{1,old}$$
-
-Then our estimate for $\hat{Y}$ should be similar to our old one whilst keeping $\beta_1$ the same. Then $\beta_1$ would only vary in so much as $X_1$ would vary normally. However as $\beta_2$ has to compensate for the increasing value of $\alpha_2$, any variation in $X_2$ is magnified by the value of $\alpha_2$. Therefore as $\alpha_2$ increases, $\beta_2$  continuously changes and the standard deviation increases correspondingly. 
-
-However, because we rescale the standard deviation of X1, Z1 plays less and less of a role as a2 increases. Therefore:
-
-$$Var(X_1) = 1+ \alpha_2^2 * 1 +1$$
-$$Var(X_1) = 2+ \alpha_2^2$$
-
-We scale accordingly:
-
-$$ X_1 = \frac{1}{\sqrt{2+\alpha_2^2}} (Z_1 + \alpha_2 X_2 + V)$$
-
-This means the proof above no longer holds as $X_1$ can no longer be expressed the same way in terms of the non-multicollinear $X_1$.
-
-Now when multicollinearity is presented in this way, as $\alpha_2$ increases, $X_1$ becomes more and more like $X_2$ ($X_2$ begins to dominate any other terms within $X_1$). As such any small variation in $X_2$ leads to large changes in $X_1$. The data is also not well spread and is narrow in the direction of $X_2$. Therefore small variations of data may move the span of X around largely. This leads to highly variable estimates and may even begin to affect bias simply due to finite samples. Therefore what we see is with increased values of $\alpha_2$ we get larger and larger standard deviations(subsequently larger confidence lengths). Bias also increases accordingly simply as a result of having finite samples.
+When multicollinearity is presented in this way, as $\alpha_2$ increases, $X_1$ becomes more and more like $X_2$ ($X_2$ begins to dominate any other terms within $X_1$). As such any small variation in $X_2$ leads to large changes in $X_1$. The data is also not well spread and is narrow in the direction of $X_2$. Therefore small variations of data may move the span of X around largely.  This leads to highly variable estimates and may even begin to affect bias simply due to finite samples. Therefore what we see is with increased values of $\alpha_2$ we get larger and larger standard deviations (subsequently larger confidence lengths). Bias also increases accordingly simply as a result of having finite samples. Coverage rate is largely unaffected, as there the higher standard deviations are compensated for by the larger confidence lengths. Any small bias that is present is too small to affect coverage rates. 
 
 
