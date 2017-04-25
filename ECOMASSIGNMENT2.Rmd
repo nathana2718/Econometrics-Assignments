@@ -195,7 +195,7 @@ For each combination of $\sigma$ and probabilistic error distribution, we vary t
 Coverage rate is consistently within 0.15 of the expected $95\%$ coverage. Coverage rates between normal and log normal distributions appear to be inconclusive - that is there seems to be little difference. Similarly, $\sigma$ appears to have limited effect on coverage rate. Higher standard deviation appears to slightly negatively affect coverage rate though the effect is again quite minute.  The number of samples is also inconclusive - coverage rate appears to be uniform across n. One could of course perform an anova test to show these and reveal possible interaction effects.
 
 #d)
-For all combinations, log normal would have generated much large confidence intervals than its normal counterpart.
+For all combinations, log normal would have generated much larger confidence intervals than its normal counterpart.
 
 This can be seen by examining the variance of normal and log normal distributions. With standard deviation $\sigma$, the variance for normal and lognormal respectively is:
 
@@ -204,11 +204,14 @@ $$ \sigma ^2 $$
 $$ (e^{\sigma^2} -1)(e^{2\mu+\sigma^2})$$
 However because we z-score standardised the data in some cases it may be more accurate than the normal case - z-score scaling skews the data as every lognormal error has mean 0 and standard deviation 1. Obviously, if one draws from a distribution, not every sample will have this present.  Initially, the interval length appears to be greater for lognormal distributions however in sample sizes greater than 20, the length is identical with their normal counterpart. This could be an indicator of slower convergence but again, the effect appears to be limited.
 
-For unitary $\sigma$, the interval length is far smaller than their $\sigma=2$ counterparts. 
+For unitary $\sigma$, the interval length is far smaller than their $\sigma=2$ counterparts. This is because confidence intervals take into account the estimated variance which is correlated with sigma - therefore confidence intervals are wider when sigma is larger.
 
 Sample size reduces interval length drastically for all combinations. This is because of the way confidence intervals are calculated - the standard error decreases with n and therefore so does the interval length.
 
-2a)
+\newpage
+
+##Q2
+a)
 ```{r}
 dataQ2a = regMCloop$new(nrange=c(20,200,2000),sigmarange=c(1,2),Urange=c("norm","lognorm"))
 dataQ2a$loop(b3=1,a3=1)
@@ -231,7 +234,7 @@ Bias = vector(length=12)
     stargazer(Q2a,header=FALSE,type="latex",summary=FALSE)
 ```
 
-It is clear that omitted variable bias is present here with an apparent consistent bias of 1. This would be ~0.33 if X1 was not rescaled..
+It is clear that omitted variable bias is present here with an apparent consistent bias of ~0.577. This would be ~0.33 if X1 was not rescaled..
 We can calculate the theoretical bias here:
 $$y = X_1\beta_1 + X_2 \beta_2 +X_3\beta_3 +U $$
 
@@ -291,7 +294,9 @@ $$ \textrm{Var}(\beta) = \textrm{Var}((X^TX)^{-1}X^Ty) $$
 $$ \textrm{Var}(\hat{\beta}) =  ((X^TX)^{-1}X^T)) \sigma I ((X^TX)^{-1}X^T)^T$$
 $$ \textrm{Var}(\hat{\beta}) =  (X^TX)^{-1}X^T) \sigma X(X^TX)^{-1}$$
 $$ \textrm{Var}(\hat{\beta}) =  \sigma (X^TX)^{-1}$$
-And so depends on $\sigma$. In this case as $X_3$ is unobservable, it simply adds to the noise, thereby increasing variance. 
+And so depends on $\sigma$. In this case as $X_3$ is unobservable, it simply adds to the noise, thereby increasing variance. This in turn increases the lengh of the confidence interval.
+
+Coverage rate improves as well due to no omitted variable bias. This means the range of values predicted by the confidence interval matches the true mean of the data.
 
 ##Q3
 a)
@@ -337,10 +342,10 @@ Under OLS though:
 $$ Var(\hat{\beta_1}) = \frac{\sigma^2}{SST_x}$$
 Given $R^2_{x,z}$ is positive and between 0 and 1, the variance will always be smaller for OLS case holding other factors constant.
 
-Interval lengths are also enlarged as a result of increased standard deviations.
+Interval lengths are also enlarged as a result of increased standard deviations. Coverage rate appears to be as appropriate, as the bias has been reduced. While we may have expected coverage rate to have decreased slightly, the coverage length is quite large due to higher standard deviation and thus are able to capture the bias.
 
 
-4)
+##Q4
 ```{r}
 dataQ4 = regMCloop$new(nrange=200,sigmarange=1,Urange="norm",a1range=c(0.8,seq(0.6,0,by=-0.1)))
 dataQ4$loop(b3=1,IV=TRUE)
@@ -366,10 +371,10 @@ dataQ4$loop(b3=1,IV=TRUE)
 
 As the correlation between Z and X decreases, Z becomes takes on more and more of the characteristics of a weak instrument until it becomes an invalid instrument at 0. Bias increases accordingly, and the convergence of the estimator is slower. Because convergence for every given sample size increases with the strength of the IV, standard deviation at every sample size decreases accordingly. This has the follow over effect of increasing confidence interval lengths. Bias is also higher due to finite sample bias in IV regression. 
 
-Obviously when $\alpha_1$ becomes zero it is longer an instrument and therefore the IVreg method is invalid.  However when the instrumental variable is invalid, the bias and standard deviation curiously drops. This can be explained for a number of reasons which were outlined in the previous assignment.  We again cite Morgan and Winship. Firstly, IV estimates can always be estimated as sample covariances are never exactly equal to zero (cannot draw an infinite sample). Therefore even for invalid instruments, Iv estimates can be computed. In fact, estimators for the standard errors are constructed under the assumption that the IV is valid and thereby generate "artificially small standard errors" (Morgan and Winship, 2015). 
+Obviously when $\alpha_1$ becomes zero it is no longer an instrument and therefore the IVreg method is invalid.  However when the instrumental variable is invalid, the bias and standard deviation curiously drops. This can be explained for a number of reasons which were outlined in the previous assignment.  We again cite Morgan and Winship. Firstly, IV estimates can always be estimated as sample covariances are never exactly equal to zero (cannot draw an infinite sample). Therefore even for invalid instruments, Iv estimates can be computed. In fact, estimators for the standard errors are constructed under the assumption that the IV is valid and thereby generate "artificially small standard errors" (Morgan and Winship, 2015). 
 
 
-5)
+##Q5
 ```{r}
 dataQ5 = regMCloop$new(nrange=200,sigmarange=1,Urange="norm",a2range=seq(0,10,by=2))
 dataQ5$loop()
@@ -392,9 +397,7 @@ dataQ5$loop()
     Q5=data.frame(ndf,sigma,Distribution,Bias,SD,CovRate,CovLength)
     stargazer(Q5,header=FALSE,type="latex",summary=FALSE)
 ```
-$\beta_1$ does not appear to change with $\alpha_2$. At first this may seem surprising - common literature holds that multicollinearity increases standard errors. 
 
-However we see that this is only the case for $\beta_2$:
 
 
 ```{r results='asis',echo=FALSE}
@@ -415,7 +418,12 @@ However we see that this is only the case for $\beta_2$:
     stargazer(Q5b2,header=FALSE,type="latex",summary=FALSE)
 ```
 
-The intuitive reasoning can be explained by thinking of the uncorrelated model(a2=0). In this case we have n points, in p dimensional space. ie. the column space of $X$. We seek to find the linear combination of these vectors which best explain y. A more precise way of defining this is we wish to find a project the data onto a hyperplane H such that the projection has smallest distance with y.  In this case, it's a little simpler - we have a column space with rank 2. 
+The intuitive reasoning can be explained by thinking of the uncorrelated model(a2=0). In this case we have n points, in p dimensional space. ie. the column space of $X$. We seek to find the linear combination of these vectors that best explain y. A more precise way of defining this is we wish to project the data onto a hyperplane H spanned by the column space of X such that the projection has smallest distance with y. The error term is than perpendicular to this hyperplane.  In this case, it's a little simpler - we have a column space with rank 2. 
+
+In simpler terms we seek to find which is closest to Y.
+
+$$ \hat{Y} = \hat{\beta_1} X_1 + \hat{\beta_2} X_2 $$
+When the X values are near correlated the span of X is nearly unchanged so we can obtain similar estimates for Y. However as one of the values will be changed, the actual linear combination required may change. 
 
 In the correlated case, one of the columns is nearly linearly dependant on the other. 
 
@@ -437,8 +445,17 @@ $$\beta_{2,new} = 1-4\beta_{1,old}$$
 
 Then our estimate for $\hat{Y}$ should be similar to our old one whilst keeping $\beta_1$ the same. Then $\beta_1$ would only vary in so much as $X_1$ would vary normally. However as $\beta_2$ has to compensate for the increasing value of $\alpha_2$, any variation in $X_2$ is magnified by the value of $\alpha_2$. Therefore as $\alpha_2$ increases, $\beta_2$  continuously changes and the standard deviation increases correspondingly. 
 
-Ths reason why the old $Y_{hat}$ is roughly the same value as the new one is because no new dimensions have really been added to the column space - X_2 is simply added again and as  a projection is a linear combination, this can be compensated for very precisely by simply changing $\beta_2$.
+However, because we rescale the standard deviation of X1, Z1 plays less and less of a role as a2 increases. Therefore:
 
-Therefore $\beta_1$ remains largely unchanged throughout changes in $\alpha_2$.
+$$Var(X_1) = 1+ \alpha_2^2 * 1 +1$$
+$$Var(X_1) = 2+ \alpha_2^2$$
+
+We scale accordingly:
+
+$$ X_1 = \frac{1}{\sqrt{2+\alpha_2^2}} (Z_1 + \alpha_2 X_2 + V)$$
+
+This means the proof above no longer holds as $X_1$ can no longer be expressed the same way in terms of the non-multicollinear $X_1$.
+
+Now when multicollinearity is presented in this way, as $\alpha_2$ increases, $X_1$ becomes more and more like $X_2$ ($X_2$ begins to dominate any other terms within $X_1$). As such any small variation in $X_2$ leads to large changes in $X_1$. The data is also not well spread and is narrow in the direction of $X_2$. Therefore small variations of data may move the span of X around largely. This leads to highly variable estimates and may even begin to affect bias simply due to finite samples. Therefore what we see is with increased values of $\alpha_2$ we get larger and larger standard deviations(subsequently larger confidence lengths). Bias also increases accordingly simply as a result of having finite samples.
 
 
