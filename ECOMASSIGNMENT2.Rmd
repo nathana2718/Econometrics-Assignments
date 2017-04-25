@@ -71,10 +71,7 @@ regMClass = R6Class(
     sd = NULL,
     CovRate=NULL,
     CovLength=NULL,
-    bias2 =NULL,
-    sd2 = NULL,
-    CovRate2 = NULL,
-    CovLength2 = NULL,
+    
     ns = NULL,
     sigma= NULL,
     dist= NULL,
@@ -86,11 +83,11 @@ regMClass = R6Class(
     initialize = function(ns = 20, n=1000, b1=1, b2=1, b3=0, a1=1, a2=0, a3=1, sigma=1,dist="norm", IV=FALSE)
     { 
       intervalrange =vector(mode="numeric",length=0)
-      intervalrange2 =vector(mode="numeric",length=0)
+      
       b1list = vector(mode="numeric",length=0)
-      b2list = vector(mode="numeric",length=0)
+   
       inInterval=vector(mode="logical",length=0)
-      inInterval2=vector(mode="logical",length=0)#declare vectors so that append method works
+      #declare vectors so that append method works
       for(j in 1:n)
       {
         #__init__
@@ -122,17 +119,11 @@ regMClass = R6Class(
         hat = ivreg(Y~X1+X2|X2+Z1)  
         }
         b1list=append(b1list,hat$coefficients["X1"])
-        b2list=append(b2list,hat$coefficients["X1"])
         #In confidence interval?
         #b1
         interval = confint(hat,parm = "X1",interval="confidence")
         inInterval = append(inInterval,b1<interval[2]&b1>interval[1])
         intervalrange = append(intervalrange,interval[2]-interval[1])
-        #b2
-        interval2 = confint(hat,parm = "X2",interval="confidence")
-        inInterval2 = append(inInterval2,b2<interval2[2]&b2>interval[1])
-        intervalrange2 = append(intervalrange2,interval2[2]-interval2[1])
-        fittedvalues = hat$fitted.values
         
         #note that this could be probably be optimised greatly by a running mean,sd tally (saves memory) . This is however a little more readable.
         
@@ -147,13 +138,6 @@ regMClass = R6Class(
       self$sd = sd(b1list)
       self$CovRate = mean(inInterval)
       self$CovLength = mean(intervalrange)
-      
-      self$bias2 = mean(b2list)-1
-      self$sd2 = sd(b2list)
-      self$CovRate2 = mean(inInterval2)
-      self$CovLength2 = mean(intervalrange2)
-      
-      self$fittedvalues = fittedvalues
     }
   )
 )
@@ -194,7 +178,7 @@ For each combination of $\sigma$ and probabilistic error distribution, we vary t
 #c)
 Coverage rate is consistently within 0.15 of the expected $95\%$ coverage. Coverage rates between normal and log normal distributions appear to be uniform - little difference is present. While one might expect the log normal case to have significantly less coverage rate, especially because the log normal is assymetric, it may be that one side my compensate for the other. ie. one side may be quite far outside the interval while the other may have a lot more than would be expected. 
 
-Similarly, $\sigma$ appears to have limited effect on coverage rate. Higher standard deviation appears to slightly negatively affect coverage rate though the effect is again quite minute.  The number of samples also seems to not have any effect - coverage rate appears to be uniform across n. 
+Similarly, $\sigma$ appears to have limited effect on coverage rate. Confidence intervals take into account $\sigma$ to some extant as they rely on an estimate of variance. Hence as standard deviations grow larger, so do confidence intervals. Therefore ~95% of true coefficients are still captured.  The number of samples also seems to not have any effect - coverage rate appears to be uniform across n. This is because we replicated over a thousand samples, so from a frequentist perspective, as sample sizes become large or approach infinity, the true $\beta$ should be within range of the confidence interval 95% of the time. 
 
 #d)
 For all combinations, log normal would have generated much larger confidence intervals than its normal counterpart.
@@ -236,7 +220,7 @@ Bias = vector(length=12)
     stargazer(Q2a,header=FALSE,type="latex",summary=FALSE)
 ```
 
-It is clear that omitted variable bias is present here with an apparent consistent bias of ~0.577. This would be ~0.33 if X1 was not rescaled..
+It is clear that omitted variable bias is present here with an apparent consistent bias of ~0.577. This would be ~0.33 if X1 was not rescaled.
 We can calculate the theoretical bias here:
 $$y = X_1\beta_1 + X_2 \beta_2 +X_3\beta_3 +U $$
 
@@ -268,10 +252,9 @@ Whilst condition 2) is present through both questions, condition 1 only holds fo
 
 2b)
 
-Bias is expected disappear as condition 1 is removed. There may be higher standard deviation than question one still as the variance of $\beta$ can be calculated like so:
+Bias is expected to disappear as condition 1 is removed. There may be higher standard deviation than question one still as the variance of $\beta$ can be calculated like so:
 
 $$ \textrm{Var}(\beta) = \textrm{Var}((X^TX)^{-1}X^Ty) $$
-
 $$ \textrm{Var}(\hat{\beta}) =  ((X^TX)^{-1}X^T)) \sigma I ((X^TX)^{-1}X^T)^T$$
 $$ \textrm{Var}(\hat{\beta}) =  (X^TX)^{-1}X^T) \sigma X(X^TX)^{-1}$$
 $$ \textrm{Var}(\hat{\beta}) =  \sigma (X^TX)^{-1}$$
@@ -290,6 +273,9 @@ We know Z is not correlated with Y as it is generated independently.
 
 
 b)
+```{r,echo=FALSE}
+set.seed(5)
+```
 ```{r}
 dataQ3 = regMCloop$new(nrange=c(20,200,2000),sigmarange=c(1,2),Urange=c("norm","lognorm"))
 dataQ3$loop(b3=1,IV=TRUE)
@@ -325,6 +311,11 @@ Given $R^2_{x,z}$ is positive and between 0 and 1, the variance will always be s
 
 Interval lengths are also enlarged as a result of increased standard deviations. Coverage rate appears to be as appropriate, as the bias has been reduced. While we may have expected coverage rate to have decreased slightly, the coverage length is quite large due to higher standard deviation and thus are able to capture the bias.
 
+There are some anomalies however in the lognormal values near 1. It seems difficult to explain this, though upon analysing the log normal distribution, we realise that it  has a very fat tail. In a sample size of only 20, the presence of say, a positive outlier is less likely to be offset by a negative outlier. Therefore, some $\hat{\beta}$s are more likely to be extreme and thus estimated standard deviations can become very high under small samples. We suspect further that the IV regression itself does not help due to its higher standard deviation. 
+
+Further evidence of this conclusion is that varying the seed often results in one lognormal value becoming very high and one becoming more appropriate. From this, we can attribute this to some random effect, however the likelihood suggests it is due to the heavy tailed distribution.
+
+\newpage
 
 ##Q4
 ```{r}
@@ -349,6 +340,7 @@ dataQ4$loop(b3=1,IV=TRUE)
     Q4=data.frame(ndf,sigma,Distribution,Bias,SD,CovRate,CovLength)
     stargazer(Q4,header=FALSE,type="latex",summary=FALSE)
 ```
+
 
 As the correlation between Z and X decreases, Z becomes takes on more and more of the characteristics of a weak instrument until it becomes an invalid instrument at 0. Bias increases accordingly, and the convergence of the estimator is slower. Because convergence for every given sample size increases with the strength of the IV, standard deviation at every sample size decreases accordingly. This has the follow over effect of increasing confidence interval lengths. Bias is also higher due to finite sample bias in IV regression. 
 
